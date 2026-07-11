@@ -2,12 +2,6 @@
 
 ## 0.11.5 - Unreleased
 
-### Fixes
-
-- Resolve targeted channel/thread sync requests directly before falling back to
-  broad thread catalog crawls, so archived thread syncs do not wait on unrelated
-  guild thread endpoints.
-
 ## 0.11.4 - 2026-07-02
 
 ### Changes
