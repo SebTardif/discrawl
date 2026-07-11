@@ -93,7 +93,10 @@ func (s *Syncer) appendDirectRequestedChannels(
 			continue
 		}
 		if channel.GuildID != "" && guildID != "" && channel.GuildID != guildID {
-			return fmt.Errorf("requested channel %s belongs to guild %s, not %s", channel.ID, channel.GuildID, guildID)
+			// Channel filters are shared across each selected guild. A channel owned
+			// by another guild is resolved there, not through this guild's catalog.
+			delete(requested, requestedID)
+			continue
 		}
 		allChannels[channel.ID] = channel
 	}

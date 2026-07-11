@@ -193,6 +193,55 @@ func TestSyncChannelSubsetFetchesRequestedArchivedThreadDirectly(t *testing.T) {
 	require.Equal(t, "t-archived", results[0].ChannelID)
 }
 
+func TestSyncChannelSubsetSkipsRequestedThreadsFromOtherSelectedGuilds(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, err := store.Open(ctx, filepath.Join(t.TempDir(), "discrawl.db"))
+	require.NoError(t, err)
+	defer func() { _ = s.Close() }()
+
+	client := &fakeClient{
+		guilds: []*discordgo.UserGuild{
+			{ID: "g1", Name: "Guild One"},
+			{ID: "g2", Name: "Guild Two"},
+		},
+		guildByID: map[string]*discordgo.Guild{
+			"g1": {ID: "g1", Name: "Guild One"},
+			"g2": {ID: "g2", Name: "Guild Two"},
+		},
+		channels: map[string][]*discordgo.Channel{
+			"g1": {{ID: "c1", GuildID: "g1", Name: "one", Type: discordgo.ChannelTypeGuildText}},
+			"g2": {{ID: "c2", GuildID: "g2", Name: "two", Type: discordgo.ChannelTypeGuildText}},
+		},
+		channelByID: map[string]*discordgo.Channel{
+			"t1": {ID: "t1", GuildID: "g1", ParentID: "c1", Name: "thread one", Type: discordgo.ChannelTypeGuildPublicThread},
+			"t2": {ID: "t2", GuildID: "g2", ParentID: "c2", Name: "thread two", Type: discordgo.ChannelTypeGuildPublicThread},
+		},
+		messages: map[string][]*discordgo.Message{
+			"t1": {{ID: "10", GuildID: "g1", ChannelID: "t1", Content: "one", Timestamp: time.Now().UTC()}},
+			"t2": {{ID: "20", GuildID: "g2", ChannelID: "t2", Content: "two", Timestamp: time.Now().UTC()}},
+		},
+	}
+
+	svc := New(client, s, nil)
+	stats, err := svc.Sync(ctx, SyncOptions{
+		Full:       true,
+		GuildIDs:   []string{"g1", "g2"},
+		ChannelIDs: []string{"t1", "t2"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, stats.Guilds)
+	require.Equal(t, 2, stats.Channels)
+	require.Equal(t, 2, stats.Threads)
+	require.Equal(t, 2, stats.Messages)
+	require.Equal(t, 2, client.guildChanCalls)
+	require.Equal(t, 2, client.channelCalls["t1"])
+	require.Equal(t, 2, client.channelCalls["t2"])
+	require.Zero(t, client.threadCalls)
+	require.Empty(t, client.archivedCalls)
+}
+
 func TestSyncToleratesArchivedThread403(t *testing.T) {
 	t.Parallel()
 
