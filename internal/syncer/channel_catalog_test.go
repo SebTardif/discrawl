@@ -242,6 +242,49 @@ func TestSyncChannelSubsetSkipsRequestedThreadsFromOtherSelectedGuilds(t *testin
 	require.Empty(t, client.archivedCalls)
 }
 
+func TestSyncChannelSubsetRejectsDirectMessageChannel(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, err := store.Open(ctx, filepath.Join(t.TempDir(), "discrawl.db"))
+	require.NoError(t, err)
+	defer func() { _ = s.Close() }()
+
+	client := &fakeClient{
+		guilds: []*discordgo.UserGuild{{ID: "g1", Name: "Guild"}},
+		guildByID: map[string]*discordgo.Guild{
+			"g1": {ID: "g1", Name: "Guild"},
+		},
+		channels: map[string][]*discordgo.Channel{
+			"g1": {{ID: "c1", GuildID: "g1", Name: "one", Type: discordgo.ChannelTypeGuildText}},
+		},
+		channelByID: map[string]*discordgo.Channel{
+			"dm1": {ID: "dm1", Name: "private", Type: discordgo.ChannelTypeDM},
+		},
+		messages: map[string][]*discordgo.Message{
+			"dm1": {{ID: "10", ChannelID: "dm1", Content: "private body", Timestamp: time.Now().UTC()}},
+		},
+	}
+
+	svc := New(client, s, nil)
+	stats, err := svc.Sync(ctx, SyncOptions{
+		Full:       true,
+		GuildIDs:   []string{"g1"},
+		ChannelIDs: []string{"dm1"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, stats.Guilds)
+	require.Zero(t, stats.Channels)
+	require.Zero(t, stats.Messages)
+	require.Equal(t, 1, client.channelCalls["dm1"])
+	require.Zero(t, client.threadCalls)
+	require.Zero(t, client.messageCalls["dm1"])
+
+	results, err := s.SearchMessages(ctx, store.SearchOptions{Query: "private body"})
+	require.NoError(t, err)
+	require.Empty(t, results)
+}
+
 func TestSyncToleratesArchivedThread403(t *testing.T) {
 	t.Parallel()
 

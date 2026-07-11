@@ -92,9 +92,9 @@ func (s *Syncer) appendDirectRequestedChannels(
 		if channel == nil || channel.ID == "" {
 			continue
 		}
-		if channel.GuildID != "" && guildID != "" && channel.GuildID != guildID {
+		if channel.GuildID == "" || channel.GuildID != guildID {
 			// Channel filters are shared across each selected guild. A channel owned
-			// by another guild is resolved there, not through this guild's catalog.
+			// by another guild is resolved there, while DMs stay out of guild sync.
 			delete(requested, requestedID)
 			continue
 		}
