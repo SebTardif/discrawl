@@ -87,6 +87,10 @@ func (s *Syncer) appendDirectRequestedChannels(
 		}
 		channel, err := s.client.Channel(ctx, requestedID)
 		if err != nil {
+			if isMissingAccess(err) || isUnknownChannel(err) {
+				delete(requested, requestedID)
+				continue
+			}
 			return fmt.Errorf("fetch requested channel %s: %w", requestedID, err)
 		}
 		if channel == nil || channel.ID == "" {

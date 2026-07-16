@@ -19,6 +19,7 @@ type fakeClient struct {
 	guilds           []*discordgo.UserGuild
 	guildByID        map[string]*discordgo.Guild
 	channelByID      map[string]*discordgo.Channel
+	channelErrors    map[string]error
 	channels         map[string][]*discordgo.Channel
 	activeThreads    map[string][]*discordgo.Channel
 	guildThreads     map[string][]*discordgo.Channel
@@ -74,6 +75,9 @@ func (f *fakeClient) Channel(_ context.Context, channelID string) (*discordgo.Ch
 		f.channelCalls = make(map[string]int)
 	}
 	f.channelCalls[channelID]++
+	if err := f.channelErrors[channelID]; err != nil {
+		return nil, err
+	}
 	return f.channelByID[channelID], nil
 }
 

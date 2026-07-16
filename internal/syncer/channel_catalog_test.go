@@ -193,6 +193,53 @@ func TestSyncChannelSubsetFetchesRequestedArchivedThreadDirectly(t *testing.T) {
 	require.Equal(t, "t-archived", results[0].ChannelID)
 }
 
+func TestSyncChannelSubsetSkipsUnavailableDirectTarget(t *testing.T) {
+	t.Parallel()
+
+	for name, channelErr := range map[string]error{
+		"missing access":  errMissingAccess(),
+		"unknown channel": errors.New(`HTTP 404 Not Found, {"message": "Unknown Channel", "code": 10003}`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			s, err := store.Open(ctx, filepath.Join(t.TempDir(), "discrawl.db"))
+			require.NoError(t, err)
+			defer func() { _ = s.Close() }()
+
+			client := &fakeClient{
+				guilds:    []*discordgo.UserGuild{{ID: "g1", Name: "Guild"}},
+				guildByID: map[string]*discordgo.Guild{"g1": {ID: "g1", Name: "Guild"}},
+				channels: map[string][]*discordgo.Channel{
+					"g1": {
+						{ID: "c1", GuildID: "g1", Name: "general", Type: discordgo.ChannelTypeGuildText},
+						{ID: "f1", GuildID: "g1", Name: "forum", Type: discordgo.ChannelTypeGuildForum},
+					},
+				},
+				channelErrors: map[string]error{"gone": channelErr},
+				messages: map[string][]*discordgo.Message{
+					"c1": {{ID: "10", GuildID: "g1", ChannelID: "c1", Content: "kept", Timestamp: time.Now().UTC()}},
+				},
+			}
+
+			svc := New(client, s, nil)
+			stats, err := svc.Sync(ctx, SyncOptions{
+				Full:       true,
+				GuildIDs:   []string{"g1"},
+				ChannelIDs: []string{"c1", "gone"},
+			})
+			require.NoError(t, err)
+			require.Equal(t, 1, stats.Channels)
+			require.Equal(t, 1, stats.Messages)
+			require.Equal(t, 1, client.channelCalls["gone"])
+			require.Equal(t, 1, client.messageCalls["c1"])
+			require.Zero(t, client.threadCalls)
+			require.Empty(t, client.archivedCalls)
+		})
+	}
+}
+
 func TestSyncChannelSubsetSkipsRequestedThreadsFromOtherSelectedGuilds(t *testing.T) {
 	t.Parallel()
 
