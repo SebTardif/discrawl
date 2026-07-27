@@ -14,12 +14,25 @@ import (
 
 type channelCatalogMode int
 
+type directChannelResult struct {
+	channel *discordgo.Channel
+	err     error
+}
+
 const (
 	channelCatalogFull channelCatalogMode = iota
 	channelCatalogIncremental
 )
 
-func (s *Syncer) channelList(ctx context.Context, guildID string, requested []string, mode channelCatalogMode, exclusions channelExclusions) ([]*discordgo.Channel, bool, error) {
+func (s *Syncer) channelList(
+	ctx context.Context,
+	guildID string,
+	requested []string,
+	mode channelCatalogMode,
+	exclusions channelExclusions,
+	selectedGuildIDs map[string]struct{},
+	directChannelResults map[string]directChannelResult,
+) ([]*discordgo.Channel, bool, error) {
 	if len(requested) == 0 {
 		channels, err := s.liveChannelList(ctx, guildID, mode, exclusions)
 		if err != nil {
@@ -63,6 +76,16 @@ func (s *Syncer) channelList(ctx context.Context, guildID string, requested []st
 	}
 
 	if unresolvedRequestedIDs(selected, requestedSet) > 0 {
+		if directChannelResults == nil {
+			directChannelResults = make(map[string]directChannelResult, len(requestedSet))
+		}
+		if err := s.appendDirectRequestedChannels(ctx, guildID, allChannels, requestedSet, selectedGuildIDs, directChannelResults); err != nil {
+			return nil, false, err
+		}
+		selected = selectRequestedChannels(allChannels, storedByID, requestedSet)
+	}
+
+	if unresolvedRequestedIDs(selected, requestedSet) > 0 {
 		if err := s.appendThreadCatalog(ctx, allChannels, threadParentIDs(topLevel)); err != nil {
 			return nil, false, err
 		}
@@ -73,6 +96,48 @@ func (s *Syncer) channelList(ctx context.Context, guildID string, requested []st
 		mergedChannelCatalog(storedCatalog, allChannels),
 		exclusions,
 	), true, nil
+}
+
+func (s *Syncer) appendDirectRequestedChannels(
+	ctx context.Context,
+	guildID string,
+	allChannels map[string]*discordgo.Channel,
+	requested map[string]struct{},
+	selectedGuildIDs map[string]struct{},
+	directChannelResults map[string]directChannelResult,
+) error {
+	for requestedID := range requested {
+		if _, ok := allChannels[requestedID]; ok {
+			continue
+		}
+		result, cached := directChannelResults[requestedID]
+		if !cached {
+			result.channel, result.err = s.client.Channel(ctx, requestedID)
+			directChannelResults[requestedID] = result
+		}
+		if result.err != nil {
+			return fmt.Errorf("fetch requested channel %s: %w", requestedID, result.err)
+		}
+		channel := result.channel
+		if channel == nil || channel.ID == "" {
+			continue
+		}
+		if channel.GuildID == "" {
+			return fmt.Errorf("requested channel %s is not a guild channel", channel.ID)
+		}
+		if channel.GuildID != guildID {
+			if _, selected := selectedGuildIDs[channel.GuildID]; !selected {
+				return fmt.Errorf("requested channel %s belongs to guild %s, not %s", channel.ID, channel.GuildID, guildID)
+			}
+			// requested is rebuilt by channelList for each selected guild. Exclude
+			// the target only from this guild's fallback discovery; its owning guild
+			// gets a fresh request set and performs the same direct lookup.
+			delete(requested, requestedID)
+			continue
+		}
+		allChannels[channel.ID] = channel
+	}
+	return nil
 }
 
 func (s *Syncer) liveChannelList(ctx context.Context, guildID string, mode channelCatalogMode, exclusions channelExclusions) ([]*discordgo.Channel, error) {

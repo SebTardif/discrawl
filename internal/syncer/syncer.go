@@ -18,6 +18,7 @@ type Client interface {
 	Self(context.Context) (*discordgo.User, error)
 	Guilds(context.Context) ([]*discordgo.UserGuild, error)
 	Guild(context.Context, string) (*discordgo.Guild, error)
+	Channel(context.Context, string) (*discordgo.Channel, error)
 	GuildChannels(context.Context, string) ([]*discordgo.Channel, error)
 	ThreadsActive(context.Context, string) ([]*discordgo.Channel, error)
 	GuildThreadsActive(context.Context, string) ([]*discordgo.Channel, error)
@@ -52,19 +53,21 @@ type Syncer struct {
 }
 
 type SyncOptions struct {
-	Full                bool
-	GuildIDs            []string
-	ChannelIDs          []string
-	Concurrency         int
-	Since               time.Time
-	Embeddings          bool
-	SkipMembers         bool
-	RequireMembers      bool
-	LatestOnly          bool
-	ExcludeChannelIDs   []string
-	ExcludeChannelKinds []string
-	IncludeCategoryIDs  []string
-	RepairReason        string
+	Full                 bool
+	GuildIDs             []string
+	ChannelIDs           []string
+	Concurrency          int
+	Since                time.Time
+	Embeddings           bool
+	SkipMembers          bool
+	RequireMembers       bool
+	LatestOnly           bool
+	ExcludeChannelIDs    []string
+	ExcludeChannelKinds  []string
+	IncludeCategoryIDs   []string
+	RepairReason         string
+	selectedGuildIDs     map[string]struct{}
+	directChannelResults map[string]directChannelResult
 }
 
 func (s *Syncer) SetTailReadyCallback(fn func(context.Context) error) {
@@ -154,6 +157,11 @@ func (s *Syncer) Sync(ctx context.Context, opts SyncOptions) (SyncStats, error) 
 		return SyncStats{}, fmt.Errorf("requested guilds not accessible: %s", strings.Join(missing, ", "))
 	}
 	targets := selectGuilds(guilds, opts.GuildIDs)
+	opts.selectedGuildIDs = make(map[string]struct{}, len(targets))
+	opts.directChannelResults = make(map[string]directChannelResult, len(opts.ChannelIDs))
+	for _, guild := range targets {
+		opts.selectedGuildIDs[guild.ID] = struct{}{}
+	}
 	stats := SyncStats{}
 	for _, guild := range targets {
 		one, err := s.syncGuild(ctx, guild.ID, opts)
@@ -198,7 +206,15 @@ func (s *Syncer) syncGuild(ctx context.Context, guildID string, opts SyncOptions
 		}
 	}
 	exclusions := s.effectiveChannelExclusions(opts)
-	channelList, targeted, err := s.channelList(ctx, guildID, opts.ChannelIDs, catalogMode, exclusions)
+	channelList, targeted, err := s.channelList(
+		ctx,
+		guildID,
+		opts.ChannelIDs,
+		catalogMode,
+		exclusions,
+		opts.selectedGuildIDs,
+		opts.directChannelResults,
+	)
 	if err != nil {
 		return stats, err
 	}
