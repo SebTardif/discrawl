@@ -5,6 +5,7 @@
 ### Changes
 
 - Scope Discord history and live tail collection with category allowlists and channel id/kind exclusions, capture new and updated threads immediately, and support wall-clock repair offsets. Thanks @hannesrudolph.
+- Resolve requested channels directly before archived-thread catalog discovery so targeted sync handles multi-guild ownership with one lookup per channel and rejects DMs. Thanks @robinbraemer.
 
 ## 0.11.8 - 2026-07-20
 
