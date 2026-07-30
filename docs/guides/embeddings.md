@@ -38,6 +38,8 @@ Use `--rebuild` when you want to regenerate vectors for the existing archive aft
 discrawl embed --rebuild --limit 1000
 ```
 
+For OpenAI `text-embedding-3-small`, `dimensions` can project vectors to a smaller size. Leave it unset for the provider default, or use a positive value such as `512` to reduce local vector storage. Run `embed --rebuild` after changing it.
+
 ## Local provider example
 
 ```toml

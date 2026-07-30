@@ -278,6 +278,7 @@ func crawlkitEmbeddingConfig(cfg config.EmbeddingsConfig) embed.Config {
 		Model:          cfg.Model,
 		BaseURL:        cfg.BaseURL,
 		APIKeyEnv:      cfg.APIKeyEnv,
+		Dimensions:     cfg.Dimensions,
 		RequestTimeout: cfg.RequestTimeout,
 		MaxInputChars:  cfg.MaxInputChars,
 	}
@@ -298,6 +299,10 @@ type syncService interface {
 
 type tailReadyConfigurer interface {
 	SetTailReadyCallback(func(context.Context) error)
+}
+
+type tailEmbeddingsConfigurer interface {
+	SetTailEmbeddings(bool)
 }
 
 type tailMessageFailureReplayer interface {
@@ -777,6 +782,9 @@ func (r *runtime) ensureDiscordServices() error {
 	r.syncer = syncerFactory(r.client, r.store, r.logger)
 	if configurable, ok := r.syncer.(attachmentTextConfigurer); ok {
 		configurable.SetAttachmentTextEnabled(r.cfg.AttachmentTextEnabled())
+	}
+	if configurable, ok := r.syncer.(tailEmbeddingsConfigurer); ok {
+		configurable.SetTailEmbeddings(r.cfg.Search.Embeddings.Enabled)
 	}
 	if configurable, ok := r.syncer.(channelExclusionConfigurer); ok {
 		configurable.SetChannelExclusions(r.cfg.Sync.ExcludeChannelIDs, r.cfg.Sync.ExcludeChannelKinds)

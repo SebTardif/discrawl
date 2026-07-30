@@ -152,6 +152,36 @@ func TestTailHandlerWritesEvents(t *testing.T) {
 	require.Equal(t, "10", cursor)
 }
 
+func TestTailHandlerQueuesEmbeddingsWhenEnabled(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, err := store.Open(ctx, filepath.Join(t.TempDir(), "discrawl.db"))
+	require.NoError(t, err)
+	defer func() { _ = s.Close() }()
+
+	handler := &tailHandler{
+		guilds:            makeGuildSet([]string{"g1"}),
+		store:             s,
+		enqueueEmbeddings: true,
+	}
+	require.NoError(t, handler.OnMessageCreate(ctx, &discordgo.Message{
+		ID:        "100000000000000001",
+		GuildID:   "g1",
+		ChannelID: "c1",
+		Content:   "queue this live message",
+		Timestamp: time.Now().UTC(),
+		Author:    &discordgo.User{ID: "u1", Username: "user"},
+	}))
+
+	var jobs int
+	require.NoError(t, s.DB().QueryRowContext(
+		ctx,
+		`select count(*) from embedding_jobs where message_id = '100000000000000001'`,
+	).Scan(&jobs))
+	require.Equal(t, 1, jobs)
+}
+
 func TestTailHandlerMessageUpdateFetchesFullMessageBeforeUpsert(t *testing.T) {
 	t.Parallel()
 

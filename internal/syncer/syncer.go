@@ -49,6 +49,7 @@ type Syncer struct {
 	tailRepairMu          sync.Mutex
 	tailRepairOffsetMu    sync.RWMutex
 	tailRepairOffset      time.Duration
+	tailEmbeddings        bool
 	channelExclusions     channelExclusions
 }
 
@@ -95,6 +96,13 @@ func (s *Syncer) SetRepairOffset(offset time.Duration) {
 	s.tailRepairOffsetMu.Lock()
 	s.tailRepairOffset = offset
 	s.tailRepairOffsetMu.Unlock()
+}
+
+func (s *Syncer) SetTailEmbeddings(enabled bool) {
+	if s == nil {
+		return
+	}
+	s.tailEmbeddings = enabled
 }
 
 func (s *Syncer) repairOffset() time.Duration {

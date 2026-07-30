@@ -502,6 +502,7 @@ func (s *Store) applyBaselineSchema(ctx context.Context) error {
 		`create index if not exists idx_mentions_target on mention_events(target_type, target_id, event_at);`,
 		`create index if not exists idx_mentions_author on mention_events(author_id, event_at);`,
 		`create index if not exists idx_embedding_jobs_state_updated on embedding_jobs(state, updated_at);`,
+		`create index if not exists idx_embedding_jobs_pending_order on embedding_jobs(state, updated_at, message_id);`,
 		`create index if not exists idx_message_embeddings_identity on message_embeddings(provider, model, input_version, dimensions);`,
 		`create index if not exists idx_failure_ledger_unresolved on failure_ledger(resolved_at, last_seen_at desc);`,
 		`create index if not exists idx_failure_ledger_scope on failure_ledger(guild_id, channel_id, message_id);`,
@@ -661,6 +662,7 @@ func (s *Store) applyQueryIndexMigration(ctx context.Context) error {
 		`create index if not exists idx_mentions_guild_event on mention_events(guild_id, event_at, event_id);`,
 		`create index if not exists idx_mentions_channel_event on mention_events(channel_id, event_at, event_id);`,
 		`create index if not exists idx_embedding_jobs_state_updated on embedding_jobs(state, updated_at);`,
+		`create index if not exists idx_embedding_jobs_pending_order on embedding_jobs(state, updated_at, message_id);`,
 		`create index if not exists idx_message_embeddings_identity on message_embeddings(provider, model, input_version, dimensions);`,
 	}
 	for _, stmt := range stmts {

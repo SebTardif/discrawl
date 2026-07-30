@@ -43,6 +43,7 @@ func TestNormalizeFillsDefaults(t *testing.T) {
 	require.Equal(t, "text-embedding-3-small", cfg.Search.Embeddings.Model)
 	require.Empty(t, cfg.Search.Embeddings.BaseURL)
 	require.Equal(t, "OPENAI_API_KEY", cfg.Search.Embeddings.APIKeyEnv)
+	require.Zero(t, cfg.Search.Embeddings.Dimensions)
 	require.Equal(t, 64, cfg.Search.Embeddings.BatchSize)
 	require.Equal(t, 12000, cfg.Search.Embeddings.MaxInputChars)
 	require.Equal(t, "2m", cfg.Search.Embeddings.RequestTimeout)
@@ -453,6 +454,14 @@ func TestNormalizeRejectsInvalidEmbeddingTimeout(t *testing.T) {
 	cfg = Default()
 	cfg.Search.Embeddings.RequestTimeout = "soon"
 	require.ErrorContains(t, cfg.Normalize(), "parse search.embeddings.request_timeout")
+}
+
+func TestNormalizeRejectsNegativeEmbeddingDimensions(t *testing.T) {
+	t.Parallel()
+
+	cfg := Default()
+	cfg.Search.Embeddings.Dimensions = -1
+	require.ErrorContains(t, cfg.Normalize(), "search.embeddings.dimensions must not be negative")
 }
 
 func TestAttachmentTextExplicitFalseSurvivesNormalize(t *testing.T) {

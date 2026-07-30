@@ -22,6 +22,23 @@ func TestDefaultEmbedLimit(t *testing.T) {
 	require.Equal(t, 1000, DefaultEmbedLimit())
 }
 
+func TestEmbeddingPendingOrderIndex(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	s, err := Open(ctx, filepath.Join(t.TempDir(), "discrawl.db"))
+	require.NoError(t, err)
+	defer func() { _ = s.Close() }()
+
+	var definition string
+	require.NoError(t, s.DB().QueryRowContext(ctx, `
+		select sql
+		from sqlite_master
+		where type = 'index' and name = 'idx_embedding_jobs_pending_order'
+	`).Scan(&definition))
+	require.Contains(t, definition, "embedding_jobs(state, updated_at, message_id)")
+}
+
 func TestQueryHelpersAndEmbeddingPresence(t *testing.T) {
 	t.Parallel()
 

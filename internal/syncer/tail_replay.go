@@ -136,7 +136,7 @@ func (s *Syncer) replayTailMessageFailures(ctx context.Context, guildIDs []strin
 		if message.GuildID == "" {
 			message.GuildID = failure.GuildID
 		}
-		mutation, err := buildMessageMutation(ctx, message, "", failure.GuildID, false, s.attachmentTextEnabled)
+		mutation, err := buildMessageMutation(ctx, message, "", failure.GuildID, s.tailEmbeddings, s.attachmentTextEnabled)
 		if err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return stats, ctxErr

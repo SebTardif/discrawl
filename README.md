@@ -818,6 +818,8 @@ enabled = false
 provider = "openai"
 model = "text-embedding-3-small"
 api_key_env = "OPENAI_API_KEY"
+# Optional OpenAI projection. Leave unset for the provider default.
+dimensions = 512
 batch_size = 64
 
 [share]
@@ -882,6 +884,8 @@ Embedding creation has two phases:
 During drain, `discrawl` claims jobs with a short lock so overlapping runs do not process the same batch. Rate limits requeue the batch and stop that drain run cleanly. Provider or validation failures retry up to three attempts before the job is marked failed. Messages with no normalized text are marked done and any stale vector for that message is removed.
 
 The provider/model/input-version identity is stored on each job and vector. If you change provider or model, pending jobs are retargeted to the new identity and prior attempts are reset. Existing vectors for another identity remain in SQLite, but semantic search only reads vectors compatible with the current config.
+
+OpenAI `text-embedding-3-small` supports `dimensions` to project vectors to a smaller size. Leave it unset for the provider default, or set a positive value such as `512` to reduce local vector storage. Changing it requires `--rebuild` so the stored vectors match future query vectors.
 
 Use `--rebuild` when changing provider, model, or input settings and you want to regenerate vectors for the existing archive:
 
