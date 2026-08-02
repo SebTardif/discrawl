@@ -42,7 +42,7 @@ actual=$(shasum -a 256 "$archive" | awk '{ print $1 }')
 
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/discrawl-verify.XXXXXX")
 trap 'rm -rf "$WORK_DIR"' EXIT
-entries=$(tar -tzf "$archive" | LC_ALL=C sort)
+entries=$(tar -tzf "$archive" | sed -e 's#^\./##' -e '/^$/d' | LC_ALL=C sort)
 expected_entries=$(printf '%s\n' CHANGELOG.md LICENSE README.md discrawl | LC_ALL=C sort)
 [[ "$entries" == "$expected_entries" ]] || {
   echo "archive must contain exactly the expected release files" >&2
