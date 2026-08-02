@@ -232,7 +232,7 @@ func TestReleaseSignedRedirectsToUnifiedWorkflow(t *testing.T) {
 	}
 }
 
-func TestVerifyMacOSReleaseAcceptsGoReleaserArchive(t *testing.T) {
+func TestVerifyMacOSReleaseAcceptsUnifiedWorkflowArchive(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("verify-macos-release.sh is a POSIX shell script")
 	}
@@ -262,7 +262,7 @@ func TestVerifyMacOSReleaseAcceptsGoReleaserArchive(t *testing.T) {
 	writeExecutable(t, filepath.Join(payloadDir, "discrawl"), "#!/bin/sh\n[ \"$1\" = --version ]\nprintf '0.11.5\\n'\n")
 
 	archive := filepath.Join(tempDir, "discrawl_0.11.5_darwin_arm64.tar.gz")
-	tarCmd := exec.CommandContext(t.Context(), tar, "-czf", archive, "-C", payloadDir, "CHANGELOG.md", "LICENSE", "README.md", "discrawl")
+	tarCmd := exec.CommandContext(t.Context(), tar, "-czf", archive, "-C", payloadDir, ".")
 	if output, err := tarCmd.CombinedOutput(); err != nil {
 		t.Fatalf("create archive: %v\n%s", err, output)
 	}
