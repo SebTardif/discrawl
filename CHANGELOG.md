@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.12.0 - 2026-08-02
 
 ### Changes
 
@@ -10,6 +10,7 @@
 
 - Update Crawlkit to v0.14.4, Alpine to 3.24, and refresh the SQLite, libc, terminal width, and terminal detection dependency stack.
 - Update CodeQL Action to v4.37.4 and actions/stale to v11 while preserving the existing security-scan and stale-item policies.
+- Let the unified release workflow own version tags and organization-managed signing, notarization, publication, and Homebrew delivery.
 
 ## 0.11.10 - 2026-07-27
 
