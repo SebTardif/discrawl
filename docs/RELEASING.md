@@ -4,7 +4,7 @@ summary: "Official Discrawl releases through the shared GitHub Actions pipeline"
 
 # Releasing `discrawl`
 
-`.github/workflows/release-unified.yml` is the only official release path. It calls `openclaw/release-workflows@v1` from protected `main`, requires the existing SSH-signed version tag, builds the exact GoReleaser matrix, signs and notarizes both thin macOS binaries as `org.openclaw.discrawl`, verifies the complete asset inventory independently on arm64 and Intel macOS, publishes `checksums.txt`, and waits for the `openclaw/homebrew-tap` handoff to succeed.
+`.github/workflows/release-unified.yml` is the only official release path. It calls `openclaw/release-workflows@v1` from protected `main`, creates and freezes the annotated version tag, builds the exact GoReleaser matrix, signs and notarizes both thin macOS binaries as `org.openclaw.discrawl`, verifies the complete asset inventory independently on arm64 and Intel macOS, publishes `checksums.txt`, and waits for the `openclaw/homebrew-tap` handoff to succeed.
 
 The public compatibility contract remains:
 
@@ -18,16 +18,15 @@ The shared pipeline also publishes verifier control assets (`ASSET-INVENTORY.jso
 
 ## Release
 
-Prepare a dated changelog section and land it on protected `main`. The signing key configured by `user.signingkey` must be the SSH key listed for your principal in `.github/release-allowed-signers`. Create and push an annotated SSH-signed tag whose commit is reachable from `main`, verify it explicitly against the repository allowlist, then dispatch the workflow:
+Prepare a dated changelog section and land it on protected `main`, then dispatch the workflow from that exact head:
 
 ```sh
-git -c gpg.format=ssh tag -s vX.Y.Z -m "Release X.Y.Z"
-git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=.github/release-allowed-signers tag -v vX.Y.Z
-git push origin vX.Y.Z
 gh workflow run release-unified.yml --repo openclaw/discrawl -f version=X.Y.Z
 ```
 
-Watch the exact run through publication and Homebrew handoff. The release is complete only when the GitHub Release contains the full asset set, both native macOS verification jobs pass, and the tap's `update-formula.yml` run is green.
+The shared workflow owns tag creation, signing, notarization, GitHub Release publication, and Homebrew handoff. Release operators never use local signing, notarization, App Store Connect, or tap credentials. On retries, an existing annotated version tag freezes the original release commit and is never moved.
+
+Watch the exact run through publication and Homebrew handoff. The release is complete only when the GitHub Release contains the full asset set, both native macOS verification jobs pass, and the tap's `update-formula.yml` run is green. The workflow then opens the next `Unreleased` changelog PR.
 
 ## Local diagnostics
 
