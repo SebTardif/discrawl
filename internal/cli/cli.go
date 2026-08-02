@@ -783,9 +783,6 @@ func (r *runtime) ensureDiscordServices() error {
 	if configurable, ok := r.syncer.(attachmentTextConfigurer); ok {
 		configurable.SetAttachmentTextEnabled(r.cfg.AttachmentTextEnabled())
 	}
-	if configurable, ok := r.syncer.(tailEmbeddingsConfigurer); ok {
-		configurable.SetTailEmbeddings(r.cfg.Search.Embeddings.Enabled)
-	}
 	if configurable, ok := r.syncer.(channelExclusionConfigurer); ok {
 		configurable.SetChannelExclusions(r.cfg.Sync.ExcludeChannelIDs, r.cfg.Sync.ExcludeChannelKinds)
 	}

@@ -128,9 +128,10 @@ Sync Discord or desktop-cache data into the local archive.
 Configure Discord collection scope with sync.include_category_ids,
 sync.exclude_channel_ids, and sync.exclude_channel_kinds; exclusions win.
 `,
-	"tail": `Usage: discrawl tail [--repair-every DURATION] [--guild ID|--guilds IDS] [--replay-failures-only [--replay-limit N]]
+	"tail": `Usage: discrawl tail [--repair-every DURATION] [--with-embeddings] [--guild ID|--guilds IDS] [--replay-failures-only [--replay-limit N]]
 
 Continuously archive new Discord messages.
+Use --with-embeddings to queue live, replayed, and repair messages for embedding.
 The sync.include_category_ids, sync.exclude_channel_ids, and
 sync.exclude_channel_kinds settings apply to live events and repair syncs.
 `,

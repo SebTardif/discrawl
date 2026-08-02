@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changes
+
+- Queue live tail, failure replay, and repair messages for embedding behind explicit `tail --with-embeddings` opt-in, and support OpenAI projection dimensions. Thanks @hannesrudolph.
+
 ## 0.11.10 - 2026-07-27
 
 ### Maintenance
