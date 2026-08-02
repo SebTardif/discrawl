@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Maintenance
+
+- Update Crawlkit to v0.14.4, Alpine to 3.24, and refresh the SQLite, libc, terminal width, and terminal detection dependency stack.
+- Update CodeQL Action to v4.37.4 and actions/stale to v11 while preserving the existing security-scan and stale-item policies.
+
 ## 0.11.10 - 2026-07-27
 
 ### Maintenance
