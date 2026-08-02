@@ -22,11 +22,31 @@ func TestDefaultEmbedLimit(t *testing.T) {
 	require.Equal(t, 1000, DefaultEmbedLimit())
 }
 
-func TestEmbeddingPendingOrderIndex(t *testing.T) {
+func TestEmbeddingPendingOrderIndexMigratesExistingArchive(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	s, err := Open(ctx, filepath.Join(t.TempDir(), "discrawl.db"))
+	dbPath := filepath.Join(t.TempDir(), "discrawl.db")
+	s, err := Open(ctx, dbPath)
+	require.NoError(t, err)
+	require.NoError(t, s.UpsertMessageWithOptions(ctx, MessageRecord{
+		ID:                "m-existing",
+		GuildID:           "g1",
+		ChannelID:         "c1",
+		MessageType:       0,
+		CreatedAt:         "2026-08-01T00:00:00Z",
+		Content:           "preserve me",
+		NormalizedContent: "preserve me",
+		RawJSON:           `{}`,
+	}, WriteOptions{EnqueueEmbedding: true}))
+	_, err = s.DB().ExecContext(ctx, `drop index idx_embedding_jobs_pending_order`)
+	require.NoError(t, err)
+	var version int
+	require.NoError(t, s.DB().QueryRowContext(ctx, `pragma user_version`).Scan(&version))
+	require.Equal(t, storeSchemaVersion, version)
+	require.NoError(t, s.Close())
+
+	s, err = Open(ctx, dbPath)
 	require.NoError(t, err)
 	defer func() { _ = s.Close() }()
 
@@ -37,6 +57,14 @@ func TestEmbeddingPendingOrderIndex(t *testing.T) {
 		where type = 'index' and name = 'idx_embedding_jobs_pending_order'
 	`).Scan(&definition))
 	require.Contains(t, definition, "embedding_jobs(state, updated_at, message_id)")
+
+	_, rows, err := s.ReadOnlyQuery(ctx, `
+		select m.content, j.state, j.attempts
+		from messages m join embedding_jobs j on j.message_id = m.id
+		where m.id = 'm-existing'
+	`)
+	require.NoError(t, err)
+	require.Equal(t, [][]string{{"preserve me", "pending", "0"}}, rows)
 }
 
 func TestQueryHelpersAndEmbeddingPresence(t *testing.T) {
