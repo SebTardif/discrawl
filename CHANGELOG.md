@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changes
+
+- Queue live tail, failure replay, and repair messages for embedding behind explicit `tail --with-embeddings` opt-in, and support OpenAI projection dimensions (#159, based on #154 — thanks @hannesrudolph).
+
 ### Maintenance
 
 - Update Crawlkit to v0.14.4, Alpine to 3.24, and refresh the SQLite, libc, terminal width, and terminal detection dependency stack.
