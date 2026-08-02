@@ -82,6 +82,7 @@ enabled = false
 provider = "openai"
 model = "text-embedding-3-small"
 api_key_env = "OPENAI_API_KEY"
+dimensions = 512 # optional OpenAI projection; omit for provider default
 batch_size = 64
 max_input_chars = 12000
 request_timeout = "2m"
@@ -139,6 +140,7 @@ Set `discord.token_source = "keyring"` if you want to require keyring lookup and
 - `sync.exclude_channel_kinds` accepts Discrawl kinds such as `text`, `announcement`, `forum`, `thread_public`, `thread_private`, and `thread_announcement`
 - a non-zero `sync.repair_offset` aligns periodic repairs to local wall-clock boundaries; for example, `repair_every = "6h"` with `repair_offset = "2h"` targets 02:00, 08:00, 14:00, and 20:00 local time
 - changing `[search.embeddings]` provider/model/input version retargets pending jobs and resets prior attempts; existing vectors for another identity remain in SQLite but are not used for semantic search
+- `[search.embeddings].dimensions` is an optional positive OpenAI projection size. Changing it requires `embed --rebuild` so stored message vectors and query vectors use the same dimensions.
 - `[search.embeddings].vector_backend` accepts `exact` or optional `turbovec`; turbovec requires Python plus the `turbovec` package and embedding dimensions divisible by 8.
 - changing `db_path` does not migrate existing data; copy the file yourself if you want to keep history
 - `sync.attachment_media = true` makes `sync` behave like `sync --with-media`; media bytes are cached under `cache_dir/media`, and CDN `404`/other fetch failures are recorded on attachment rows

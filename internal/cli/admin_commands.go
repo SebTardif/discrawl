@@ -330,6 +330,7 @@ func (r *runtime) runTail(args []string) error {
 	fs := flag.NewFlagSet("tail", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	repairEvery := fs.Duration("repair-every", mustDuration(r.cfg.Sync.RepairEvery), "")
+	withEmbeddings := fs.Bool("with-embeddings", false, "")
 	replayFailuresOnly := fs.Bool("replay-failures-only", false, "")
 	replayLimit := fs.Int("replay-limit", syncer.TailMessageReplayLimit, "")
 	guildsFlag := fs.String("guilds", "", "")
@@ -352,6 +353,9 @@ func (r *runtime) runTail(args []string) error {
 			"--replay-limit must be between 1 and %d",
 			syncer.TailMessageReplayLimit,
 		))
+	}
+	if configurable, ok := r.syncer.(tailEmbeddingsConfigurer); ok {
+		configurable.SetTailEmbeddings(*withEmbeddings)
 	}
 	guildIDs := r.resolveSyncGuilds(*guildFlag, *guildsFlag)
 	if *replayFailuresOnly {

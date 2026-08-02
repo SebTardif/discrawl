@@ -3670,6 +3670,7 @@ type fakeSyncService struct {
 	excludeChannelKinds   []string
 	includeCategoryIDs    []string
 	repairOffset          time.Duration
+	tailEmbeddings        bool
 	callTailReady         bool
 	tailReadyCalls        int
 	tailReady             func(context.Context) error
@@ -3714,6 +3715,10 @@ func (f *fakeSyncService) ReplayTailMessageFailures(_ context.Context, guildIDs 
 
 func (f *fakeSyncService) SetTailReadyCallback(fn func(context.Context) error) {
 	f.tailReady = fn
+}
+
+func (f *fakeSyncService) SetTailEmbeddings(enabled bool) {
+	f.tailEmbeddings = enabled
 }
 
 func (f *fakeSyncService) SetAttachmentTextEnabled(enabled bool) {
@@ -3859,6 +3864,11 @@ func TestRuntimeInitSyncTailAndDoctor(t *testing.T) {
 	require.NoError(t, rt.withServices(true, func() error { return rt.runTail([]string{"--repair-every", "30s"}) }))
 	require.Equal(t, []string{"g2"}, fakeSync.lastTail)
 	require.Equal(t, 30*time.Second, fakeSync.lastRepair)
+	require.False(t, fakeSync.tailEmbeddings)
+
+	rt = newRuntime()
+	require.NoError(t, rt.withServices(true, func() error { return rt.runTail([]string{"--with-embeddings"}) }))
+	require.True(t, fakeSync.tailEmbeddings)
 
 	rt = newRuntime()
 	var out bytes.Buffer
@@ -3874,6 +3884,7 @@ func TestRuntimeInitSyncTailAndDoctor(t *testing.T) {
 	}))
 	require.Equal(t, []string{"g2"}, fakeSync.lastReplayGuilds)
 	require.Equal(t, 7, fakeSync.lastReplayLimit)
+	require.False(t, fakeSync.tailEmbeddings)
 	require.Equal(t, "candidates=4\nrecovered=2\ndeferred=1\npolicy_deferred=1\n", out.String())
 	require.Equal(t, 2, ExitCode(rt.runTail([]string{"extra"})))
 	require.Equal(t, 2, ExitCode(rt.runTail([]string{"--replay-limit", "0"})))

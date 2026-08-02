@@ -91,6 +91,7 @@ type EmbeddingsConfig struct {
 	Model          string `toml:"model"`
 	BaseURL        string `toml:"base_url"`
 	APIKeyEnv      string `toml:"api_key_env"`
+	Dimensions     int    `toml:"dimensions"`
 	BatchSize      int    `toml:"batch_size"`
 	MaxInputChars  int    `toml:"max_input_chars"`
 	RequestTimeout string `toml:"request_timeout"`
@@ -320,6 +321,9 @@ func (c *Config) Normalize() error {
 	}
 	if c.Search.Embeddings.BatchSize <= 0 {
 		c.Search.Embeddings.BatchSize = 64
+	}
+	if c.Search.Embeddings.Dimensions < 0 {
+		return errors.New("search.embeddings.dimensions must not be negative")
 	}
 	if c.Share.RepoPath == "" {
 		c.Share.RepoPath = Default().Share.RepoPath

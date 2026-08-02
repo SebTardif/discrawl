@@ -301,6 +301,7 @@ Runs the live Gateway tail and periodic repair loop.
 
 ```bash
 discrawl tail
+discrawl tail --with-embeddings
 discrawl tail --guild 123456789012345678
 discrawl tail --repair-every 30m
 discrawl tail --replay-failures-only
@@ -818,6 +819,8 @@ enabled = false
 provider = "openai"
 model = "text-embedding-3-small"
 api_key_env = "OPENAI_API_KEY"
+# Optional OpenAI projection. Leave unset for the provider default.
+dimensions = 512
 batch_size = 64
 
 [share]
@@ -869,6 +872,7 @@ If enabled, embeddings are intended to enrich recall in background batches, not 
 export OPENAI_API_KEY="..."
 discrawl init --with-embeddings
 discrawl sync --with-embeddings
+discrawl tail --with-embeddings
 discrawl embed --limit 1000
 discrawl search --mode semantic "launch checklist"
 discrawl search --mode hybrid "launch checklist"
@@ -876,12 +880,14 @@ discrawl search --mode hybrid "launch checklist"
 
 Embedding creation has two phases:
 
-1. `sync --with-embeddings` queues changed messages by writing `embedding_jobs` rows. New messages, changed normalized text, and messages that do not already have a job are queued. This phase does not call the embedding provider.
+1. `sync --with-embeddings` queues changed messages by writing `embedding_jobs` rows. `tail --with-embeddings` does the same for live events, failure replay, and periodic repair. New messages, changed normalized text, and messages that do not already have a job are queued. This phase does not call the embedding provider.
 2. `discrawl embed` drains pending jobs in bounded batches, calls the configured provider, and writes vectors to `message_embeddings` with provider, model, input version, dimensions, and binary vector data.
 
 During drain, `discrawl` claims jobs with a short lock so overlapping runs do not process the same batch. Rate limits requeue the batch and stop that drain run cleanly. Provider or validation failures retry up to three attempts before the job is marked failed. Messages with no normalized text are marked done and any stale vector for that message is removed.
 
 The provider/model/input-version identity is stored on each job and vector. If you change provider or model, pending jobs are retargeted to the new identity and prior attempts are reset. Existing vectors for another identity remain in SQLite, but semantic search only reads vectors compatible with the current config.
+
+OpenAI `text-embedding-3-small` supports `dimensions` to project vectors to a smaller size. Leave it unset for the provider default, or set a positive value such as `512` to reduce local vector storage. Changing it requires `--rebuild` so the stored vectors match future query vectors.
 
 Use `--rebuild` when changing provider, model, or input settings and you want to regenerate vectors for the existing archive:
 

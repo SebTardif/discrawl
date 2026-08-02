@@ -8,6 +8,7 @@ Embeddings are optional. FTS is the default search path and the primary verifica
 export OPENAI_API_KEY="..."
 discrawl init --with-embeddings
 discrawl sync --with-embeddings
+discrawl tail --with-embeddings
 discrawl embed --limit 1000
 discrawl search --mode semantic "launch checklist"
 discrawl search --mode hybrid "launch checklist"
@@ -15,7 +16,7 @@ discrawl search --mode hybrid "launch checklist"
 
 ## Two-phase pipeline
 
-1. **Queue** - `sync --with-embeddings` writes `embedding_jobs` rows for new messages, changed normalized text, and messages without an existing job. The embedding provider is **not** called in this phase.
+1. **Queue** - `sync --with-embeddings` writes `embedding_jobs` rows for changed archive messages. `tail --with-embeddings` queues live events, replayed failures, and periodic repair messages. The embedding provider is **not** called in this phase.
 2. **Drain** - `discrawl embed` claims pending jobs with a short lock so overlapping runs do not process the same batch. It calls the configured provider, writes vectors to `message_embeddings` with provider, model, input version, dimensions, and binary vector data.
 
 Behavior during drain:
@@ -37,6 +38,8 @@ Use `--rebuild` when you want to regenerate vectors for the existing archive aft
 ```bash
 discrawl embed --rebuild --limit 1000
 ```
+
+For OpenAI `text-embedding-3-small`, `dimensions` can project vectors to a smaller size. Leave it unset for the provider default, or use a positive value such as `512` to reduce local vector storage. Run `embed --rebuild` after changing it.
 
 ## Local provider example
 

@@ -278,6 +278,7 @@ func crawlkitEmbeddingConfig(cfg config.EmbeddingsConfig) embed.Config {
 		Model:          cfg.Model,
 		BaseURL:        cfg.BaseURL,
 		APIKeyEnv:      cfg.APIKeyEnv,
+		Dimensions:     cfg.Dimensions,
 		RequestTimeout: cfg.RequestTimeout,
 		MaxInputChars:  cfg.MaxInputChars,
 	}
@@ -298,6 +299,10 @@ type syncService interface {
 
 type tailReadyConfigurer interface {
 	SetTailReadyCallback(func(context.Context) error)
+}
+
+type tailEmbeddingsConfigurer interface {
+	SetTailEmbeddings(bool)
 }
 
 type tailMessageFailureReplayer interface {

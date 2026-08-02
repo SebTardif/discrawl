@@ -22,6 +22,7 @@ func (s *Syncer) RunTail(ctx context.Context, guildIDs []string, repairEvery tim
 		store:                  s.store,
 		client:                 s.client,
 		attachmentTextEnabled:  s.attachmentTextEnabled,
+		enqueueEmbeddings:      s.tailEmbeddings,
 		onReady:                s.tailReady,
 		logger:                 s.logger,
 		exclusions:             s.channelExclusions,
@@ -131,15 +132,16 @@ func (s *Syncer) startTailRepair(ctx context.Context, guildIDs []string) *tailRe
 	startedAt := time.Now()
 	go func() {
 		defer s.tailRepairMu.Unlock()
-		_, err := s.runTailRepair(repairCtx, tailRepairSyncOptions(guildIDs))
+		_, err := s.runTailRepair(repairCtx, tailRepairSyncOptions(guildIDs, s.tailEmbeddings))
 		done <- tailRepairResult{err: err, elapsed: time.Since(startedAt)}
 	}()
 	return &tailRepairRun{cancel: cancel, done: done}
 }
 
-func tailRepairSyncOptions(guildIDs []string) SyncOptions {
+func tailRepairSyncOptions(guildIDs []string, embeddings bool) SyncOptions {
 	return SyncOptions{
 		GuildIDs:     append([]string(nil), guildIDs...),
+		Embeddings:   embeddings,
 		SkipMembers:  true,
 		LatestOnly:   true,
 		RepairReason: "tail_repair",
@@ -207,6 +209,7 @@ type tailHandler struct {
 	store                  *store.Store
 	client                 Client
 	attachmentTextEnabled  bool
+	enqueueEmbeddings      bool
 	failureLedgerTimeout   time.Duration
 	onReady                func(context.Context) error
 	logger                 *slog.Logger
@@ -252,7 +255,7 @@ func (t *tailHandler) OnMessageCreate(ctx context.Context, msg *discordgo.Messag
 		return nil
 	}
 	discordclient.UpdateTailFailureStage(ctx, discordclient.TailFailureStageMessageBuild)
-	mutation, err := buildMessageMutation(ctx, msg, "", "", false, t.attachmentTextEnabled)
+	mutation, err := buildMessageMutation(ctx, msg, "", "", t.enqueueEmbeddings, t.attachmentTextEnabled)
 	if err != nil {
 		return err
 	}
@@ -292,7 +295,7 @@ func (t *tailHandler) OnMessageUpdate(ctx context.Context, msg *discordgo.Messag
 		return nil
 	}
 	discordclient.UpdateTailFailureStage(ctx, discordclient.TailFailureStageMessageBuild)
-	mutation, err := buildMessageMutation(ctx, msg, "", "", false, t.attachmentTextEnabled)
+	mutation, err := buildMessageMutation(ctx, msg, "", "", t.enqueueEmbeddings, t.attachmentTextEnabled)
 	if err != nil {
 		return err
 	}
