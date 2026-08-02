@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Maintenance
+
+- Update Crawlkit to v0.14.4 and refresh the SQLite, libc, terminal width, and terminal detection dependency stack.
+
 ## 0.11.10 - 2026-07-27
 
 ### Maintenance
