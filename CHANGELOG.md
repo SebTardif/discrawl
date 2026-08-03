@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changes
+
+- Surface stored message-to-channel catalog integrity in diagnostics, annotate output whose channel metadata is missing, and warn when zero-row SQL results may hide orphaned messages. Thanks @htydev.
+
 ### Documentation
 
 - Rewrite the README as a concise front door to installation, archive sources, search, and the existing documentation site.

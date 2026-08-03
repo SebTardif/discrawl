@@ -28,6 +28,21 @@ type Store struct {
 	path string
 }
 
+type CatalogIntegrity struct {
+	OrphanedMessageCount int       `json:"orphaned_message_count"`
+	OrphanedChannelCount int       `json:"orphaned_channel_count"`
+	OldestAffectedAt     time.Time `json:"oldest_affected_at,omitzero"`
+	NewestAffectedAt     time.Time `json:"newest_affected_at,omitzero"`
+}
+
+type CatalogIntegrityState string
+
+const (
+	CatalogConsistent   CatalogIntegrityState = "consistent"
+	CatalogIncomplete   CatalogIntegrityState = "incomplete"
+	CatalogUndetermined CatalogIntegrityState = "undetermined"
+)
+
 type Status struct {
 	DBPath             string    `json:"db_path"`
 	GuildCount         int       `json:"guild_count"`
@@ -53,14 +68,15 @@ type SearchOptions struct {
 }
 
 type SearchResult struct {
-	MessageID   string    `json:"message_id"`
-	GuildID     string    `json:"guild_id"`
-	ChannelID   string    `json:"channel_id"`
-	ChannelName string    `json:"channel_name"`
-	AuthorID    string    `json:"author_id"`
-	AuthorName  string    `json:"author_name"`
-	Content     string    `json:"content"`
-	CreatedAt   time.Time `json:"created_at"`
+	MessageID              string    `json:"message_id"`
+	GuildID                string    `json:"guild_id"`
+	ChannelID              string    `json:"channel_id"`
+	ChannelName            string    `json:"channel_name"`
+	ChannelMetadataPresent bool      `json:"-"`
+	AuthorID               string    `json:"author_id"`
+	AuthorName             string    `json:"author_name"`
+	Content                string    `json:"content"`
+	CreatedAt              time.Time `json:"created_at"`
 }
 
 type MentionRow struct {

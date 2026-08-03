@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ type diagnosticsReport struct {
 	Database                  diagnosticsDatabase  `json:"database"`
 	SyncLock                  diagnosticsSyncLock  `json:"sync_lock"`
 	Freshness                 diagnosticsFreshness `json:"freshness"`
+	Catalog                   diagnosticsCatalog   `json:"catalog"`
 	SafeForReadOnlyInspection bool                 `json:"safe_for_read_only_inspection"`
 	Warnings                  []string             `json:"warnings,omitempty"`
 }
@@ -64,6 +66,14 @@ type diagnosticsFreshness struct {
 	Error           string `json:"error,omitempty"`
 }
 
+type diagnosticsCatalog struct {
+	State                store.CatalogIntegrityState `json:"state"`
+	OrphanedMessageCount int                         `json:"orphaned_message_count"`
+	OrphanedChannelCount int                         `json:"orphaned_channel_count"`
+	OldestAffectedAt     string                      `json:"oldest_affected_at,omitempty"`
+	NewestAffectedAt     string                      `json:"newest_affected_at,omitempty"`
+}
+
 func (r *runtime) runDiagnostics(args []string) error {
 	fs := flag.NewFlagSet("diagnostics", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -90,6 +100,7 @@ func (r *runtime) runDiagnostics(args []string) error {
 			Integrity: "not_checked",
 			WAL:       statDiagnosticsFile(dbPath + "-wal"),
 		},
+		Catalog: diagnosticsCatalog{State: store.CatalogUndetermined},
 		SyncLock: diagnosticsSyncLock{
 			Path:         lockPath,
 			MetadataPath: syncLockMetadataPath(lockPath),
@@ -167,6 +178,28 @@ func (r *runtime) runDiagnostics(args []string) error {
 			}
 			if !status.LastTailEventAt.IsZero() {
 				report.Freshness.LastTailEventAt = status.LastTailEventAt.UTC().Format(time.RFC3339)
+			}
+		}
+		if catalog, catalogErr := db.CatalogIntegrity(r.ctx); catalogErr != nil {
+			report.Warnings = append(report.Warnings, fmt.Sprintf("catalog integrity could not be read: %v", catalogErr))
+		} else {
+			state := store.CatalogConsistent
+			if catalog.OrphanedMessageCount > 0 {
+				state = store.CatalogIncomplete
+			}
+			report.Catalog = diagnosticsCatalog{
+				State:                state,
+				OrphanedMessageCount: catalog.OrphanedMessageCount,
+				OrphanedChannelCount: catalog.OrphanedChannelCount,
+			}
+			if !catalog.OldestAffectedAt.IsZero() {
+				report.Catalog.OldestAffectedAt = catalog.OldestAffectedAt.UTC().Format(time.RFC3339)
+			}
+			if !catalog.NewestAffectedAt.IsZero() {
+				report.Catalog.NewestAffectedAt = catalog.NewestAffectedAt.UTC().Format(time.RFC3339)
+			}
+			if catalog.OrphanedMessageCount > 0 {
+				report.Warnings = append(report.Warnings, fmt.Sprintf("catalog has %d orphaned messages across %d channel IDs", catalog.OrphanedMessageCount, catalog.OrphanedChannelCount))
 			}
 		}
 	}

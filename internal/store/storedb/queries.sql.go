@@ -10,6 +10,50 @@ import (
 	"database/sql"
 )
 
+const catalogIntegrity = `-- name: CatalogIntegrity :one
+select
+	count(*) as orphaned_message_count,
+	count(distinct coalesce(m.channel_id, '')) as orphaned_channel_count,
+	cast(coalesce((
+		select m2.created_at
+		from messages m2
+		left join channels c2 on c2.id = m2.channel_id
+		where c2.id is null
+		order by julianday(m2.created_at), m2.id
+		limit 1
+	), '') as text) as oldest_affected_at,
+	cast(coalesce((
+		select m2.created_at
+		from messages m2
+		left join channels c2 on c2.id = m2.channel_id
+		where c2.id is null
+		order by julianday(m2.created_at) desc, m2.id desc
+		limit 1
+	), '') as text) as newest_affected_at
+from messages m
+left join channels c on c.id = m.channel_id
+where c.id is null
+`
+
+type CatalogIntegrityRow struct {
+	OrphanedMessageCount int64
+	OrphanedChannelCount int64
+	OldestAffectedAt     string
+	NewestAffectedAt     string
+}
+
+func (q *Queries) CatalogIntegrity(ctx context.Context) (CatalogIntegrityRow, error) {
+	row := q.db.QueryRowContext(ctx, catalogIntegrity)
+	var i CatalogIntegrityRow
+	err := row.Scan(
+		&i.OrphanedMessageCount,
+		&i.OrphanedChannelCount,
+		&i.OldestAffectedAt,
+		&i.NewestAffectedAt,
+	)
+	return i, err
+}
+
 const channelMessageBounds = `-- name: ChannelMessageBounds :one
 select cast(coalesce(min(id), '') as text) as oldest_id,
        cast(coalesce(max(id), '') as text) as newest_id
@@ -355,6 +399,23 @@ type HasMessageEmbeddingsParams struct {
 
 func (q *Queries) HasMessageEmbeddings(ctx context.Context, arg HasMessageEmbeddingsParams) (bool, error) {
 	row := q.db.QueryRowContext(ctx, hasMessageEmbeddings, arg.Provider, arg.Model, arg.InputVersion)
+	var present bool
+	err := row.Scan(&present)
+	return present, err
+}
+
+const hasOrphanedMessageChannels = `-- name: HasOrphanedMessageChannels :one
+select exists(
+	select 1
+	from messages m
+	left join channels c on c.id = m.channel_id
+	where c.id is null
+	limit 1
+) as present
+`
+
+func (q *Queries) HasOrphanedMessageChannels(ctx context.Context) (bool, error) {
+	row := q.db.QueryRowContext(ctx, hasOrphanedMessageChannels)
 	var present bool
 	err := row.Scan(&present)
 	return present, err
