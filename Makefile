@@ -50,17 +50,17 @@ test-coverage:
 	awk -v total="$$total" 'BEGIN { if (total == "" || total + 0 < 85.0) { printf("coverage %s%% is below 85%%\n", total == "" ? "missing" : total); exit 1 } printf("coverage %.1f%%\n", total + 0) }'
 
 fmt:
-	@changed="$$(GOWORK=off go run mvdan.cc/gofumpt@v0.10.0 -l .)"; \
+	@changed="$$(GOWORK=off go run mvdan.cc/gofumpt@v0.11.0 -l .)"; \
 	if [ -n "$$changed" ]; then printf 'gofumpt wants changes in:\n%s\n' "$$changed"; exit 1; fi
 
 lint:
 	GOWORK=off go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2 run
 	GOWORK=off go vet ./...
 	GOWORK=off go run honnef.co/go/tools/cmd/staticcheck@v0.7.0 ./...
-	GOWORK=off go run github.com/securego/gosec/v2/cmd/gosec@v2.27.1 -exclude=G101,G115,G202,G301,G304 ./...
-	GOWORK=off go run golang.org/x/vuln/cmd/govulncheck@v1.5.0 ./...
+	GOWORK=off go run github.com/securego/gosec/v2/cmd/gosec@v2.28.0 -exclude=G101,G115,G202,G301,G304 ./...
+	GOWORK=off go run golang.org/x/vuln/cmd/govulncheck@v1.6.0 ./...
 	@output_file="$$(mktemp)"; trap 'rm -f "$$output_file"' EXIT; \
-	GOWORK=off go run golang.org/x/tools/cmd/deadcode@v0.47.0 -test ./... >"$$output_file"; \
+	GOWORK=off go run golang.org/x/tools/cmd/deadcode@v0.48.0 -test ./... >"$$output_file"; \
 	if [ -s "$$output_file" ]; then cat "$$output_file"; exit 1; fi
 
 tidy-check:
