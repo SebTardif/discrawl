@@ -1,10 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.13.1 - 2026-08-09
+
+**Highlight:** `tail --verbose` now tells you *why* a message was not archived.
 
 ### Fixes
 
-- Trace live Discord message receipt, handling, scope filtering, and archive completion in verbose tail logs without exposing message content or author metadata.
+- Trace live Discord message receipt, handling, scope filtering, and archive completion in verbose tail logs. Each event reports `gateway_received`, `handler_started`, `ignored` with a reason, or `archived`, so an out-of-scope message is no longer indistinguishable from one the Gateway never delivered. `archived` is emitted only after the canonical write, event append and cursor update all succeed. Traces carry event type, stage and IDs only — never message content or author metadata.
 
 ### Maintenance
 
