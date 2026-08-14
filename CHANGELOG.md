@@ -1,11 +1,10 @@
 # Changelog
 
-## Unreleased
+## v0.13.2 - 2026-08-14
 
 ### Maintenance
 
 - Require Go 1.26.6 and refresh the pinned Go container images for the latest standard-library security fixes.
-
 ## 0.13.1 - 2026-08-09
 
 **Highlight:** `tail --verbose` now tells you *why* a message was not archived.
