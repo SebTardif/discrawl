@@ -169,6 +169,134 @@ func TestClientRESTWrappers(t *testing.T) {
 	require.Equal(t, "m1", message.ID)
 }
 
+func TestGuildMembersSkipsNilUser(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v10/guilds/g1/members", writeJSON([]map[string]any{
+		{
+			"guild_id": "g1",
+			"user":     map[string]any{"id": "u1", "username": "peter"},
+			"roles":    []string{},
+		},
+		{
+			"guild_id": "g1",
+			"roles":    []string{},
+		},
+	}))
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	restore := patchDiscordEndpoints(server.URL + "/api/v10/")
+	t.Cleanup(restore)
+
+	client, err := New("token")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
+
+	var members []*discordgo.Member
+	require.NotPanics(t, func() {
+		members, err = client.GuildMembers(context.Background(), "g1")
+	})
+	require.NoError(t, err)
+	require.Len(t, members, 1)
+	require.Equal(t, "u1", members[0].User.ID)
+}
+
+func TestGuildMembersPaginatesFromLastValidUser(t *testing.T) {
+	firstPage := make([]map[string]any, 1000)
+	for i := range 999 {
+		firstPage[i] = map[string]any{
+			"guild_id": "g1",
+			"user":     map[string]any{"id": fmt.Sprintf("u%04d", i), "username": "user"},
+			"roles":    []string{},
+		}
+	}
+	firstPage[999] = map[string]any{
+		"guild_id": "g1",
+		"roles":    []string{},
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v10/guilds/g1/members", func(w http.ResponseWriter, r *http.Request) {
+		after := r.URL.Query().Get("after")
+		switch after {
+		case "":
+			writeJSON(firstPage)(w, r)
+		case "u0998":
+			writeJSON([]map[string]any{
+				{
+					"guild_id": "g1",
+					"user":     map[string]any{"id": "u1000", "username": "tail"},
+					"roles":    []string{},
+				},
+			})(w, r)
+		default:
+			t.Errorf("unexpected after=%q", after)
+			writeJSON([]map[string]any{})(w, r)
+		}
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	restore := patchDiscordEndpoints(server.URL + "/api/v10/")
+	t.Cleanup(restore)
+
+	client, err := New("token")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
+
+	var members []*discordgo.Member
+	require.NotPanics(t, func() {
+		members, err = client.GuildMembers(context.Background(), "g1")
+	})
+	require.NoError(t, err)
+	require.Len(t, members, 1000)
+	require.Equal(t, "u0000", members[0].User.ID)
+	require.Equal(t, "u0998", members[998].User.ID)
+	require.Equal(t, "u1000", members[999].User.ID)
+}
+
+func TestGuildMembersErrorsWhenFullPageHasNoUser(t *testing.T) {
+	page := make([]map[string]any, 1000)
+	for i := range page {
+		page[i] = map[string]any{"guild_id": "g1", "roles": []string{}}
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v10/guilds/g1/members", writeJSON(page))
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	restore := patchDiscordEndpoints(server.URL + "/api/v10/")
+	t.Cleanup(restore)
+
+	client, err := New("token")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
+
+	var members []*discordgo.Member
+	require.NotPanics(t, func() {
+		members, err = client.GuildMembers(context.Background(), "g1")
+	})
+	require.ErrorContains(t, err, "member page missing user id")
+	require.Nil(t, members)
+}
+
+func TestLastMemberUserID(t *testing.T) {
+	t.Parallel()
+
+	require.Empty(t, lastMemberUserID(nil))
+	require.Empty(t, lastMemberUserID([]*discordgo.Member{
+		{User: nil},
+		nil,
+	}))
+	require.Equal(t, "u2", lastMemberUserID([]*discordgo.Member{
+		{User: &discordgo.User{ID: "u1"}},
+		{User: &discordgo.User{ID: "u2"}},
+		{User: nil},
+		nil,
+	}))
+}
+
 func TestTailRequiresHandler(t *testing.T) {
 	client, err := New("token")
 	require.NoError(t, err)

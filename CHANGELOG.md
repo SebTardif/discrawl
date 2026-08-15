@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixes
+
+- Skip Discord members with a missing user object during pagination and record conversion so public sync no longer panics on a nil `User`.
+
 ## v0.13.2 - 2026-08-14
 
 ### Maintenance

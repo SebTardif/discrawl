@@ -13,6 +13,9 @@ import (
 )
 
 func toMemberRecord(guildID string, member *discordgo.Member) store.MemberRecord {
+	if member == nil || member.User == nil {
+		return store.MemberRecord{}
+	}
 	raw := marshalJSONString(member, "{}")
 	roles := marshalJSONString(member.Roles, "[]")
 	return store.MemberRecord{

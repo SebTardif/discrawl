@@ -370,7 +370,11 @@ func (s *Syncer) refreshGuildMembers(ctx context.Context, guildID string, force 
 	}
 	converted := make([]store.MemberRecord, 0, len(members))
 	for _, member := range members {
-		converted = append(converted, toMemberRecord(guildID, member))
+		rec := toMemberRecord(guildID, member)
+		if rec.UserID == "" {
+			continue
+		}
+		converted = append(converted, rec)
 	}
 	if err := s.store.MergeMembers(ctx, guildID, converted); err != nil {
 		s.logger.Warn("member merge failed", "guild_id", guildID, "err", err)
