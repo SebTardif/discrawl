@@ -385,12 +385,40 @@ func (c *Client) GuildMembers(ctx context.Context, guildID string) ([]*discordgo
 		if len(page) == 0 {
 			return out, nil
 		}
-		out = append(out, page...)
-		after = page[len(page)-1].User.ID
+		for _, member := range page {
+			if memberUserID(member) == "" {
+				continue
+			}
+			out = append(out, member)
+		}
 		if len(page) < 1000 {
 			return out, nil
 		}
+		nextAfter := lastMemberUserID(page)
+		if nextAfter == "" {
+			return nil, fmt.Errorf("guild %s member page missing user id", guildID)
+		}
+		if nextAfter == after {
+			return nil, fmt.Errorf("guild %s member page cursor did not advance", guildID)
+		}
+		after = nextAfter
 	}
+}
+
+func memberUserID(member *discordgo.Member) string {
+	if member == nil || member.User == nil {
+		return ""
+	}
+	return member.User.ID
+}
+
+func lastMemberUserID(page []*discordgo.Member) string {
+	for _, member := range slices.Backward(page) {
+		if id := memberUserID(member); id != "" {
+			return id
+		}
+	}
+	return ""
 }
 
 func (c *Client) ChannelMessages(ctx context.Context, channelID string, limit int, beforeID, afterID string) ([]*discordgo.Message, error) {
