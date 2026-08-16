@@ -281,6 +281,39 @@ func TestGuildMembersErrorsWhenFullPageHasNoUser(t *testing.T) {
 	require.Nil(t, members)
 }
 
+func TestGuildMembersErrorsWhenCursorDoesNotAdvance(t *testing.T) {
+	page := make([]map[string]any, 1000)
+	page[0] = map[string]any{
+		"guild_id": "g1",
+		"user":     map[string]any{"id": "u1", "username": "peter"},
+		"roles":    []string{},
+	}
+	for i := 1; i < len(page); i++ {
+		page[i] = map[string]any{"guild_id": "g1", "roles": []string{}}
+	}
+
+	requests := 0
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v10/guilds/g1/members", func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		writeJSON(page)(w, r)
+	})
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
+
+	restore := patchDiscordEndpoints(server.URL + "/api/v10/")
+	t.Cleanup(restore)
+
+	client, err := New("token")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = client.Close() })
+
+	members, err := client.GuildMembers(context.Background(), "g1")
+	require.ErrorContains(t, err, "member page cursor did not advance")
+	require.Nil(t, members)
+	require.Equal(t, 2, requests)
+}
+
 func TestLastMemberUserID(t *testing.T) {
 	t.Parallel()
 

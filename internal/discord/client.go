@@ -394,10 +394,14 @@ func (c *Client) GuildMembers(ctx context.Context, guildID string) ([]*discordgo
 		if len(page) < 1000 {
 			return out, nil
 		}
-		after = lastMemberUserID(page)
-		if after == "" {
+		nextAfter := lastMemberUserID(page)
+		if nextAfter == "" {
 			return nil, fmt.Errorf("guild %s member page missing user id", guildID)
 		}
+		if nextAfter == after {
+			return nil, fmt.Errorf("guild %s member page cursor did not advance", guildID)
+		}
+		after = nextAfter
 	}
 }
 
@@ -409,8 +413,8 @@ func memberUserID(member *discordgo.Member) string {
 }
 
 func lastMemberUserID(page []*discordgo.Member) string {
-	for i := len(page) - 1; i >= 0; i-- {
-		if id := memberUserID(page[i]); id != "" {
+	for _, member := range slices.Backward(page) {
+		if id := memberUserID(member); id != "" {
 			return id
 		}
 	}
