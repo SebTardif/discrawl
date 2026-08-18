@@ -300,10 +300,10 @@ func (c *Client) Guilds(ctx context.Context) ([]*discordgo.UserGuild, error) {
 		}
 		nextBefore := page[len(page)-1].ID
 		if nextBefore == "" {
-			return nil, fmt.Errorf("guild page missing id")
+			return nil, errors.New("guild page missing id")
 		}
 		if nextBefore == before {
-			return nil, fmt.Errorf("guild page cursor did not advance")
+			return nil, errors.New("guild page cursor did not advance")
 		}
 		before = nextBefore
 	}
