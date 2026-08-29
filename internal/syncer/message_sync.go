@@ -417,7 +417,6 @@ func (s *Syncer) bootstrapChannelHistory(ctx context.Context, channel *discordgo
 			}
 			break
 		}
-		before = page[len(page)-1].ID
 		if len(page) < 100 {
 			if newest != "" {
 				if err := s.store.SetSyncState(ctx, channelHistoryCompleteScope(channel.ID), "1"); err != nil {
@@ -426,6 +425,14 @@ func (s *Syncer) bootstrapChannelHistory(ctx context.Context, channel *discordgo
 			}
 			break
 		}
+		nextBefore := page[len(page)-1].ID
+		if nextBefore == "" {
+			return messageCount, fmt.Errorf("channel %s message page missing id", channel.ID)
+		}
+		if nextBefore == before {
+			return messageCount, fmt.Errorf("channel %s message page cursor did not advance", channel.ID)
+		}
+		before = nextBefore
 	}
 	if newest != "" {
 		if err := s.advanceChannelLatest(ctx, channel.ID, newest); err != nil {
@@ -451,7 +458,6 @@ func (s *Syncer) syncForwardPages(ctx context.Context, channel *discordgo.Channe
 			return messageCount, newest, err
 		}
 		progress.touch(channel, len(page))
-		after = maxSnowflake(after, pageNewest)
 		newest = maxSnowflake(newest, pageNewest)
 		messageCount += len(page)
 		if err := s.advanceChannelLatest(ctx, channel.ID, newest); err != nil {
@@ -460,6 +466,14 @@ func (s *Syncer) syncForwardPages(ctx context.Context, channel *discordgo.Channe
 		if len(page) < 100 {
 			break
 		}
+		nextAfter := maxSnowflake(after, pageNewest)
+		if nextAfter == "" {
+			return messageCount, newest, fmt.Errorf("channel %s message page missing id", channel.ID)
+		}
+		if nextAfter == after {
+			return messageCount, newest, fmt.Errorf("channel %s message page cursor did not advance", channel.ID)
+		}
+		after = nextAfter
 	}
 	return messageCount, newest, nil
 }
@@ -507,8 +521,8 @@ func (s *Syncer) syncBackfillPages(ctx context.Context, channel *discordgo.Chann
 			}
 			break
 		}
-		before = page[len(page)-1].ID
-		if err := s.store.SetSyncState(ctx, channelBackfillScope(channel.ID), before); err != nil {
+		nextBefore := page[len(page)-1].ID
+		if err := s.store.SetSyncState(ctx, channelBackfillScope(channel.ID), nextBefore); err != nil {
 			return messageCount, newest, err
 		}
 		if len(page) < 100 {
@@ -520,6 +534,13 @@ func (s *Syncer) syncBackfillPages(ctx context.Context, channel *discordgo.Chann
 		if pageLimit > 0 && pages >= pageLimit {
 			break
 		}
+		if nextBefore == "" {
+			return messageCount, newest, fmt.Errorf("channel %s message page missing id", channel.ID)
+		}
+		if nextBefore == before {
+			return messageCount, newest, fmt.Errorf("channel %s message page cursor did not advance", channel.ID)
+		}
+		before = nextBefore
 	}
 	return messageCount, newest, nil
 }
