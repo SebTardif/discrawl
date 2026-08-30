@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func fullMessagePage(lastID string) []*discordgo.Message {
 	author := &discordgo.User{ID: "u1", Username: "user"}
 	for i := range 99 {
 		page[i] = &discordgo.Message{
-			ID:        fmt.Sprintf("%d", i+1),
+			ID:        strconv.Itoa(i + 1),
 			GuildID:   "g1",
 			ChannelID: "c1",
 			Content:   "msg",
