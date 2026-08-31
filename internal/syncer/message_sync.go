@@ -522,6 +522,15 @@ func (s *Syncer) syncBackfillPages(ctx context.Context, channel *discordgo.Chann
 			break
 		}
 		nextBefore := page[len(page)-1].ID
+		// Even a bounded pass must leave a usable checkpoint for its next run.
+		if len(page) == 100 {
+			if nextBefore == "" {
+				return messageCount, newest, fmt.Errorf("channel %s message page missing id", channel.ID)
+			}
+			if nextBefore == before {
+				return messageCount, newest, fmt.Errorf("channel %s message page cursor did not advance", channel.ID)
+			}
+		}
 		if err := s.store.SetSyncState(ctx, channelBackfillScope(channel.ID), nextBefore); err != nil {
 			return messageCount, newest, err
 		}
@@ -533,12 +542,6 @@ func (s *Syncer) syncBackfillPages(ctx context.Context, channel *discordgo.Chann
 		}
 		if pageLimit > 0 && pages >= pageLimit {
 			break
-		}
-		if nextBefore == "" {
-			return messageCount, newest, fmt.Errorf("channel %s message page missing id", channel.ID)
-		}
-		if nextBefore == before {
-			return messageCount, newest, fmt.Errorf("channel %s message page cursor did not advance", channel.ID)
 		}
 		before = nextBefore
 	}

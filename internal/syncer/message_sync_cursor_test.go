@@ -161,3 +161,31 @@ func TestMessagePagesErrorWhenCursorDoesNotAdvance(t *testing.T) {
 		})
 	}
 }
+
+func TestInvalidBackfillPagePreservesCheckpoint(t *testing.T) {
+	t.Parallel()
+	for _, pageLimit := range []int{0, 1} {
+		for _, lastID := range []string{"", "100"} {
+			t.Run(fmt.Sprintf("limit=%d/last=%q", pageLimit, lastID), func(t *testing.T) {
+				t.Parallel()
+				ctx := t.Context()
+				st, err := store.Open(ctx, filepath.Join(t.TempDir(), "archive.db"))
+				require.NoError(t, err)
+				t.Cleanup(func() { _ = st.Close() })
+				require.NoError(t, st.SetSyncState(ctx, channelBackfillScope("c1"), "100"))
+				client := &repeatingMessagePageClient{page: fullMessagePage(lastID)}
+				svc := New(client, st, nil)
+				channel := &discordgo.Channel{ID: "c1", GuildID: "g1", Name: "general"}
+				_, _, err = svc.syncBackfillPages(ctx, channel, "100", "200", channel.Name, false, time.Time{}, pageLimit, nil)
+				require.Error(t, err)
+				require.Equal(t, 1, client.requests)
+				cursor, err := st.GetSyncState(ctx, channelBackfillScope("c1"))
+				require.NoError(t, err)
+				require.Equal(t, "100", cursor)
+				complete, err := st.GetSyncState(ctx, channelHistoryCompleteScope("c1"))
+				require.NoError(t, err)
+				require.Empty(t, complete)
+			})
+		}
+	}
+}
