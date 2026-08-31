@@ -76,6 +76,7 @@ discrawl sync --with-media
 - Heartbeat logs (`message sync waiting`) name the oldest active channel and per-channel page activity if in-flight channels stop completing for a while.
 - Every run ends with a `message sync finished` summary.
 - Each channel crawl has a bounded runtime budget; pathological channels are deferred and retried next sync.
+- Guild and archived-thread pagination reports a cursor error if Discord repeats a page instead of continuing indefinitely.
 - Retryable failures and unavailable-channel markers are tracked per channel; stale unavailable markers are cleared after a later successful crawl.
 - Marker cleanup is best-effort, so one missing local sync-state row cannot crash the run.
 - Member refresh is best-effort and gives up after five minutes without a caller-supplied deadline. Routine latest-only syncs skip it unless `--with-members` is set.
